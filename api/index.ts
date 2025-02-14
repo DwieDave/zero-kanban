@@ -30,6 +30,7 @@ function randomInt(max: number) {
 app.get("/login", async (c) => {
   const jwtPayload = {
     sub: userIDs[randomInt(userIDs.length)],
+    admin: true,
     iat: Math.floor(Date.now() / 1000),
   };
 

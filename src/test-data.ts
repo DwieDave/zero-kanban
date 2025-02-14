@@ -1,5 +1,5 @@
 import { randBetween, randID, randInt } from "./rand";
-import { Medium, Message, User } from "./schema";
+import type { Task, User } from "./schema";
 
 const requests = [
   "Hey guys, is the zero package ready yet?",
@@ -21,22 +21,31 @@ const replies = [
   "I could send you a tarball, but it won't work",
 ];
 
-export function randomMessage(
+const titles = [
+  "I'm a title",
+  "Another title",
+  "Yet another title",
+  "And another title",
+  "One more title",
+  "Last title",
+]
+
+export function randomTask(
   users: readonly User[],
-  mediums: readonly Medium[]
-): Message {
+): Task {
   const id = randID();
-  const mediumID = mediums[randInt(mediums.length)].id;
   const timestamp = randBetween(1727395200000, new Date().getTime());
   const isRequest = randInt(10) <= 6;
   const messages = isRequest ? requests : replies;
-  const senders = users.filter((u) => u.partner === !isRequest);
-  const senderID = senders[randInt(senders.length)].id;
+  const assigneeID = users[randInt(users.length)].id;
   return {
     id,
-    senderID,
-    mediumID,
+    assigneeID,
     body: messages[randInt(messages.length)],
+    title: titles[randInt(titles.length)],
+    state: "todo",
+    order: 10000,
+    archived: null,
     timestamp,
   };
 }

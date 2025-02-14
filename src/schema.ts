@@ -8,8 +8,8 @@
 import {
   createSchema,
   definePermissions,
-  ExpressionBuilder,
-  Row,
+  type ExpressionBuilder,
+  type Row,
   NOBODY_CAN,
   ANYONE_CAN,
   table,
@@ -17,59 +17,57 @@ import {
   boolean,
   number,
   relationships,
+  enumeration,
 } from "@rocicorp/zero";
 
-const message = table("message")
+
+export type userType = "teacher" | "janitor";
+
+const task = table("task")
   .columns({
     id: string(),
-    senderID: string().from("sender_id"),
-    mediumID: string().from("medium_id"),
-    body: string(),
+    assigneeID: string().from("assignee_id"),
+    title: string(),
+    body: string().optional(),
+    state: enumeration<"todo" | "inprogress" | "done">(),
+    order: number(),
     timestamp: number(),
+    archived: number().optional()
   })
   .primaryKey("id");
 
 const user = table("user")
   .columns({
     id: string(),
-    name: string(),
-    partner: boolean(),
-  })
-  .primaryKey("id");
-
-const medium = table("medium")
-  .columns({
-    id: string(),
+    type: enumeration<userType>(),
+    admin: boolean(),
     name: string(),
   })
   .primaryKey("id");
 
-const messageRelationships = relationships(message, ({ one }) => ({
-  sender: one({
-    sourceField: ["senderID"],
+
+const taskRelationships = relationships(task, ({ one }) => ({
+  assignee: one({
+    sourceField: ["assigneeID"],
     destField: ["id"],
     destSchema: user,
-  }),
-  medium: one({
-    sourceField: ["mediumID"],
-    destField: ["id"],
-    destSchema: medium,
   }),
 }));
 
 export const schema = createSchema(1, {
-  tables: [user, medium, message],
-  relationships: [messageRelationships],
+  tables: [user, task],
+  relationships: [taskRelationships],
 });
 
 export type Schema = typeof schema;
-export type Message = Row<typeof schema.tables.message>;
-export type Medium = Row<typeof schema.tables.medium>;
+export type Task = Row<typeof schema.tables.task>;
 export type User = Row<typeof schema.tables.user>;
+export type RelatedTask = Task & { assignee?: User }
 
 // The contents of your decoded JWT.
 type AuthData = {
   sub: string | null;
+  admin: boolean;
 };
 
 export const permissions = definePermissions<AuthData, Schema>(schema, () => {
@@ -78,21 +76,12 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
     { cmpLit }: ExpressionBuilder<Schema, keyof Schema["tables"]>
   ) => cmpLit(authData.sub, "IS NOT", null);
 
-  const allowIfMessageSender = (
+  const allowIfAdmin = (
     authData: AuthData,
-    { cmp }: ExpressionBuilder<Schema, "message">
-  ) => cmp("senderID", "=", authData.sub ?? "");
+    { cmpLit, }: ExpressionBuilder<Schema, "user">
+  ) => cmpLit(authData.admin, "=", true);
 
   return {
-    medium: {
-      row: {
-        insert: NOBODY_CAN,
-        update: {
-          preMutation: NOBODY_CAN,
-        },
-        delete: NOBODY_CAN,
-      },
-    },
     user: {
       row: {
         insert: NOBODY_CAN,
@@ -102,16 +91,16 @@ export const permissions = definePermissions<AuthData, Schema>(schema, () => {
         delete: NOBODY_CAN,
       },
     },
-    message: {
+    task: {
       row: {
         // anyone can insert
         insert: ANYONE_CAN,
         // only sender can edit their own messages
         update: {
-          preMutation: [allowIfMessageSender],
+          preMutation: [allowIfAdmin],
         },
         // must be logged in to delete
-        delete: [allowIfLoggedIn],
+        delete: [allowIfLoggedIn, allowIfAdmin],
       },
     },
   };
