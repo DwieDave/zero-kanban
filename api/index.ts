@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { setCookie } from "hono/cookie";
-import { handle } from "hono/vercel";
+import { serve } from "@hono/node-server"
 import { SignJWT } from "jose";
 
 export const config = {
@@ -46,7 +46,11 @@ app.get("/login", async (c) => {
   return c.text("ok");
 });
 
-export default handle(app);
+export default serve({
+  fetch: app.fetch,
+  port: 3000,
+  hostname: "0.0.0.0"
+}, (info) => `Server is listening on ${info.port}`);
 
 function must<T>(val: T) {
   if (!val) {

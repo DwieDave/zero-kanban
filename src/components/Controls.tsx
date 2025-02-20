@@ -85,7 +85,8 @@ export const Controls = () => {
 
   const toggleLogin = async () => {
     if (z.userID === "anon") {
-      await fetch("/api/login");
+      const api = import.meta.env.VITE_PUBLIC_API_SERVER;
+      await fetch(`${api}/api/login`);
     } else {
       Cookies.remove("jwt");
     }
